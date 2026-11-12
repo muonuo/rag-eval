@@ -4,6 +4,7 @@ deepseek-flash 是混合思考模型；若判卷批量出现 NaN（思考内容�
 把 config.JUDGE_LLM 换成 deepseek-chat 再试。
 """
 
+import ast
 import os
 
 import config  # noqa: F401  # 约定：最先 import config，保证 .env 先加载
@@ -36,6 +37,23 @@ _judge_llm = None
 _judge_embeddings = None
 
 
+def _normalize_contexts(value) -> list[str]:
+    """CSV 缓存反序列化坑：retrieved_contexts 从 Dataset 取出是 str（list 的 repr）。
+
+    RAGAS 指标要 list[str]；传字符串进去 ContextPrecision 会把每个字符当一条
+    文档逐个判分（几百次 LLM 调用，等效卡死）。此处统一还原成 list。
+    """
+    if isinstance(value, list):
+        return [str(c) for c in value]
+    try:
+        parsed = ast.literal_eval(value)
+        if isinstance(parsed, list):
+            return [str(c) for c in parsed]
+    except (ValueError, SyntaxError):
+        pass
+    return [str(value)]  # 兜底：确实不是 list 就当单条文档
+
+
 def build_judges() -> None:
     """两个裁判各干合适的活：LLM 评要"读懂内容"的指标，embedding 评要"算相似度"的指标。
 
@@ -47,7 +65,17 @@ def build_judges() -> None:
         api_key=os.getenv("DEEPSEEK_API_KEY"), base_url=DEEPSEEK_BASE_URL
     )
     emb_client = AsyncOpenAI(api_key="ollama", base_url=JUDGE_EMBEDDING_BASE_URL)
-    _judge_llm = llm_factory(model=JUDGE_LLM, client=llm_client, temperature=0)
+    # deepseek-flash 是混合思考模型：判卷不需要思考，关掉省一半时间，
+    # 也避免思考内容混进判卷输出导致解析出 NaN（见 README 已知坑）
+    # 注意：思考与正文共享 max_tokens 预算；ragas 默认仅 1024，
+    # 长答案判卷 JSON 会被截断报 "incomplete due to a max_tokens limit"
+    _judge_llm = llm_factory(
+        model=JUDGE_LLM,
+        client=llm_client,
+        temperature=0,
+        max_tokens=8192,
+        extra_body={"thinking": {"type": "disabled"}},
+    )
     _judge_embeddings = embedding_factory(
         model=JUDGE_EMBEDDING_MODEL, client=emb_client
     )
@@ -73,7 +101,7 @@ class FullResult(FastResult):
 async def run_fast(row) -> FastResult:
     user_input = row.get("user_input")
     reference = row.get("reference")
-    retrieved_contexts = row.get("retrieved_contexts")
+    retrieved_contexts = _normalize_contexts(row.get("retrieved_contexts"))
     response = row.get("response")
 
     cr = await ContextRecall(llm=_judge_llm).ascore(
@@ -89,7 +117,7 @@ async def run_fast(row) -> FastResult:
 async def run_full(row) -> FullResult:
     user_input = row.get("user_input")
     reference = row.get("reference")
-    retrieved_contexts = row.get("retrieved_contexts")
+    retrieved_contexts = _normalize_contexts(row.get("retrieved_contexts"))
     response = row.get("response")
 
     cp = await ContextPrecision(llm=_judge_llm).ascore(
@@ -147,7 +175,7 @@ async def score_single(dataset, index: int = 3) -> None:
     row = dataset.__getitem__(index)
     user_input = row.get("user_input")
     reference = row.get("reference")
-    retrieved_contexts = row.get("retrieved_contexts")
+    retrieved_contexts = _normalize_contexts(row.get("retrieved_contexts"))
     response = row.get("response")
 
     print(f"========开始评估：input: {user_input}===========")
