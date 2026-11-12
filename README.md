@@ -1,5 +1,15 @@
 # rag-eval：RAG 系统评估（RAGAS 六指标）
 
+[![Python](https://img.shields.io/badge/Python-3.14+-blue.svg)](https://www.python.org/)
+[![RAGAS](https://img.shields.io/badge/eval-RAGAS-ff6f00.svg)](https://github.com/explodinggradients/ragas)
+[![LangChain](https://img.shields.io/badge/framework-LangChain-1c3c3c.svg)](https://github.com/langchain-ai/langchain)
+[![uv](https://img.shields.io/badge/uv-managed-de5f41.svg)](https://docs.astral.sh/uv/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
+**English** | [中文](#流程全景)
+
+> A standalone, reusable RAG evaluation project: hybrid retrieval (dense + BM25 + RRF + cloud reranking) feeding a RAG agent, scored on all six RAGAS metrics with a dual-judge setup (DeepSeek as LLM judge + local Ollama embeddings). Built with `uv`, no torch dependency.
+
 源自黑马 LangChain 课程 3.4《RAG 评估》实践，从 notebook 抽出的独立可复用项目。
 2026-11 混合架构简历项目的评估模块可直接参考本仓库。
 
