@@ -1,7 +1,7 @@
 """判卷：LLM 走 DeepSeek，向量走本地 Ollama，RAGAS 六指标 + @experiment 批量。
 
-deepseek-flash 是混合思考模型；若判卷批量出现 NaN（思考内容干扰 JSON 解析），
-把 config.JUDGE_LLM 换成 deepseek-chat 再试。
+deepseek-flash 是混合思考模型；判卷已在 build_judges() 显式关闭思考
+（thinking disabled）并放大 max_tokens，避免思考内容污染判卷 JSON 导致 NaN。
 """
 
 import ast

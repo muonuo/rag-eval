@@ -103,6 +103,7 @@ uv run python main.py evaluate --test-size 0.3 --metrics full   # 全 6 指标�
 
 ## 已知坑
 
-- **判卷 NaN**：deepseek-flash 是混合思考模型，思考内容可能干扰判卷 JSON 解析。
-  批量出现 NaN 时把 `config.JUDGE_LLM` 换成 `deepseek-chat`
+- **判卷 NaN**：deepseek-flash 是混合思考模型，思考内容会污染判卷 JSON。
+  本项目已在判卷客户端显式关闭思考（`thinking: disabled`）并把 `max_tokens`
+  提到 8192（思考与正文共享预算，太小会截断判卷 JSON）
 - **限流**：答题间隔 `config.REQUEST_DELAY`（默认 1s），报限流错误就调大
