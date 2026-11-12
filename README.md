@@ -10,8 +10,8 @@
 
 > A standalone, reusable RAG evaluation project: hybrid retrieval (dense + BM25 + RRF + cloud reranking) feeding a RAG agent, scored on all six RAGAS metrics with a dual-judge setup (DeepSeek as LLM judge + local Ollama embeddings). Built with `uv`, no torch dependency.
 
-源自黑马 LangChain 课程 3.4《RAG 评估》实践，从 notebook 抽出的独立可复用项目。
-2026-11 混合架构简历项目的评估模块可直接参考本仓库。
+一个独立的 RAG 系统评估项目:对"混合检索 + RAG 生成"整条链路做自动化评测,
+输出 RAGAS 六指标成绩单,定位检索器与生成器各自的短板。
 
 ## 流程全景
 
@@ -69,15 +69,15 @@ uv run python main.py evaluate --test-size 0.3 --metrics fast
 uv run python main.py evaluate --test-size 0.3 --metrics full   # 全 6 指标，更慢
 ```
 
-## 相对 notebook 的改动
+## 设计要点
 
-1. `test_size` 默认 0.1 → **0.3**（原版只考 2 题，运气成分大）
-2. 新增 `--metrics fast|full`：批量实验支持全 6 指标（原版只 2 个）
-3. **重排从本地 CrossEncoder(Qwen3-Reranker-0.6B) 换成阿里云 qwen3.7-text-rerank**
-   （与 08.Milvus 云端重排同一模型；去掉 torch / sentence-transformers 两个大依赖）
-4. 文本模型统一 **deepseek-flash**（答题 + 判卷）；判卷向量走本地 Ollama qwen3-embedding
-5. 路径锚定项目根，摆脱 cwd 相对路径；去掉逐切片调试打印
-6. 判卷抽样子集存为独立数据集 `rag_eval_test`（原版会覆盖全量答题卡缓存）
+1. **重排用阿里云 qwen3.7-text-rerank**(云端 API),不依赖本地 CrossEncoder,
+   去掉 torch / sentence-transformers 两个大依赖,整体轻量
+2. `test_size` 默认 **0.3** 抽样,降低小样本运气成分
+3. `--metrics fast|full`:批量实验支持全 6 指标或快速子集
+4. 文本模型统一 **deepseek-flash**(答题 + 判卷);判卷向量走本地 Ollama qwen3-embedding
+5. 路径锚定项目根,不受运行时 cwd 影响
+6. 判卷抽样子集存为独立数据集 `rag_eval_test`,不污染全量答题卡缓存
 7. `build / evaluate / sample` 三个子命令 + `--rebuild` 强制重答
 
 ## 目录结构
